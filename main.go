@@ -22,6 +22,14 @@ var kategori = []Category {
 
 
 func main() {
+	// root path
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Welcome to API",
+		})
+	}) 
+
 	// /api/category
 	http.HandleFunc("/api/category", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
