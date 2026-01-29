@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"tugas-1/database"
+	"tugas-1/handlers"
 	"tugas-1/models"
+	"tugas-1/repositories"
+	"tugas-1/services"
 
 	"github.com/spf13/viper"
 )
@@ -49,42 +51,17 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Welcome to API",
+			"message": "Welcome to Category API",
 		})
 	}) 
 
-	// /api/category
-	http.HandleFunc("/api/category", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(kategori)
-		} else if r.Method == "POST" {
-		var kategoriBaru models.Category
-		err := json.NewDecoder(r.Body).Decode(&kategoriBaru)
-		if err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-		kategoriBaru.ID = len(kategori) + 1
-		kategori = append(kategori, kategoriBaru)
+	categoryRepo := repositories.NewCategoryRepository(db)
+	categoryService := services.NewCategoryService(categoryRepo)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated) // 201
-		json.NewEncoder(w).Encode(kategoriBaru)
-	}
-	})
-
-
-	// /api/category/{id}
-	http.HandleFunc("/api/category/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
-			getCategoryById(w, r)
-		} else if r.Method == "PUT" {
-			updateCategoryById(w, r)
-		} else if r.Method == "DELETE" {
-			deleteCategoryById(w, r)
-		}
-	})
+	// Setup routes
+	http.HandleFunc("/api/category", categoryHandler.HandleCategories)
+	http.HandleFunc("/api/category/", categoryHandler.HandleCategoryByID)
 
 	fmt.Println("Server running di localhost:" + config.Port)
 	err = http.ListenAndServe(":8080", nil)
@@ -93,72 +70,3 @@ func main() {
 	}
 }
 
-func getCategoryById (w http.ResponseWriter, r *http.Request) {
-		idStr := strings.TrimPrefix(r.URL.Path, "/api/category/")
-
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			http.Error(w, "Invalid category id", http.StatusBadRequest)
-			return 
-		}
-		for _, k := range kategori {
-			if k.ID == id {
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(k)
-				return
-			}
-		}
-		http.Error(w, "kategori tidak ditemukan", http.StatusNotFound)
-	
-}
-
-func deleteCategoryById (w http.ResponseWriter, r *http.Request) {
-		idStr := strings.TrimPrefix(r.URL.Path, "/api/category/")
-
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			http.Error(w, "Invalid category id", http.StatusBadRequest)
-			return
-		}
-
-		for i, k := range kategori {
-			if k.ID == id {
-				kategori = append(kategori[:i], kategori[i+1:]... )
-
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]string{
-					"message": "kategori berhasil dihapus",
-				})
-				return
-			}
-		}
-		http.Error(w, "kategori belum ada", http.StatusNotFound)
-}
-
-func updateCategoryById (w http.ResponseWriter, r *http.Request) {
-		idStr := strings.TrimPrefix(r.URL.Path, "/api/category/")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			http.Error(w, "Invalid category id", http.StatusBadRequest)
-		}
-
-		// get data dari request
-		var updateKategori models.Category
-		err = json.NewDecoder(r.Body).Decode(&updateKategori)
-		if err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
-			return
-		}
-
-		for i := range kategori {
-			if kategori[i].ID == id {
-				updateKategori.ID = id
-				kategori[i] = updateKategori
-	
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(updateKategori)
-				return
-			}
-		}
-		http.Error(w, "kategori belum ada", http.StatusNotFound)
-}
