@@ -55,13 +55,23 @@ func main() {
 		})
 	}) 
 
+	// dependency injection category
 	categoryRepo := repositories.NewCategoryRepository(db)
 	categoryService := services.NewCategoryService(categoryRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
-	// Setup routes
+	// Setup routes category
 	http.HandleFunc("/api/category", categoryHandler.HandleCategories)
 	http.HandleFunc("/api/category/", categoryHandler.HandleCategoryByID)
+
+	// dependency injection product 
+	productRepo := repositories.NewProductRepository(db)
+	productService := services.NewProductService(productRepo)
+	productHandler := handlers.NewProductHandler(productService)
+
+	// Setup routes product
+	http.HandleFunc("/api/product", productHandler.HandleProducts)
+	http.HandleFunc("/api/product/", productHandler.HandleProductByID)
 
 	fmt.Println("Server running di localhost:" + config.Port)
 	err = http.ListenAndServe(":8080", nil)
