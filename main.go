@@ -3,25 +3,48 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"tugas-1/database"
+	"tugas-1/models"
+
+	"github.com/spf13/viper"
 )
 
-type Category struct {
-	ID int `json:"id"`
-	Name string `json:"name"`
-	Description string `json:"description"`
-}
-
-var kategori = []Category {
+var kategori = []models.Category {
 	{ID: 1, Name: "Action", Description: "Film yang melibatkan banyak aksi atau combat yang spektakuler"},
 	{ID: 2, Name: "Horror", Description: "Film yang membuat bulu kuduk merinding dan menyerang psikologis"},
 }
 
+type Config struct {
+	Port string `mapstructure:"PORT"`
+	DBConn string `mapstructure:"DB_CONN"`
+}
 
 
 func main() {
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	if _, err := os.Stat(".env"); err == nil {
+		viper.SetConfigFile(".env")
+		_ = viper.ReadInConfig()
+	}
+
+	config := Config{
+		Port: viper.GetString("PORT"),
+		DBConn: viper.GetString("DB_CONN"),
+	}
+
+	// setup db
+	db, err := database.InitDB(config.DBConn)
+	if err != nil {
+		log.Fatal("Failed to initialize database", err)
+	}
+	defer db.Close()
 	// root path
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -36,7 +59,7 @@ func main() {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(kategori)
 		} else if r.Method == "POST" {
-		var kategoriBaru Category
+		var kategoriBaru models.Category
 		err := json.NewDecoder(r.Body).Decode(&kategoriBaru)
 		if err != nil {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -63,8 +86,8 @@ func main() {
 		}
 	})
 
-	fmt.Println("Server running di localhost:8080")
-	err := http.ListenAndServe(":8080", nil)
+	fmt.Println("Server running di localhost:" + config.Port)
+	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		fmt.Println("gagal running server")
 	}
@@ -120,7 +143,7 @@ func updateCategoryById (w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get data dari request
-		var updateKategori Category
+		var updateKategori models.Category
 		err = json.NewDecoder(r.Body).Decode(&updateKategori)
 		if err != nil {
 			http.Error(w, "Invalid request", http.StatusBadRequest)
